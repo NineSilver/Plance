@@ -22,6 +22,7 @@ pub struct Cli {
 }
 
 impl Cli {
+    // Create a brand-new Cli struct
     fn new() -> Self {
         Cli {
             action: Subcommand::DEFAULT,
@@ -32,7 +33,9 @@ impl Cli {
         }
     }
 
+    // Get args from command line
     pub fn get() -> Self {
+        // Use clap to parse the given arguments
         let matches = App::new("Plance")
             .version("0.1.0")
             .author("NineSilver")
@@ -81,8 +84,10 @@ impl Cli {
             .setting(AppSettings::SubcommandRequiredElseHelp)
             .get_matches();
 
+        // Create a new struct
         let mut cli = Self::new();
 
+        // Program logic
         if let Some(matches) = matches.subcommand_matches("new") {
             cli.action = Subcommand::NEW;
             cli.name.push_str(matches.value_of("name").unwrap());
@@ -112,6 +117,7 @@ impl Cli {
             cli.dir_name.push_str(matches.value_of("dirname").unwrap());
         }
 
+        // Return the processed struct
         cli
     }
 }
