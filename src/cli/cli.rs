@@ -1,35 +1,41 @@
 use clap::{App, AppSettings, Arg, SubCommand};
 
+use plance::is_program_in_path;
+
 pub enum Subcommand {
-    NEW,
-    // INIT,
-    DELETE,
-    DEFAULT,
+    New {
+        name: String,
+        dir_name: String,
+        project_type: ProjectType,
+        git_exists: bool
+    },
+    Init {
+        name: Option<String>,
+        project_type: ProjectType,
+        create_src: bool,
+        git_exists: bool
+    },
+    Delete {
+        dir_name: String,
+    },
+    Default,
 }
 
 pub enum ProjectType {
     C,
-    CPP,
-    DEFAULT,
+    Cpp,
+    Default,
 }
 
 pub struct Cli {
     pub action: Subcommand,
-
-    pub name: String,
-    pub dir_name: String,
-    pub project_type: ProjectType,
 }
 
 impl Cli {
     // Create a brand-new Cli struct
     fn new() -> Self {
         Cli {
-            action: Subcommand::DEFAULT,
-
-            name: String::new(),
-            dir_name: String::new(),
-            project_type: ProjectType::DEFAULT,
+            action: Subcommand::Default,
         }
     }
 
@@ -43,6 +49,7 @@ impl Cli {
             .subcommand(
                 SubCommand::with_name("new")
                     .about("Create a new and empty project")
+                    .alias("create")
                     .arg(
                         Arg::with_name("name")
                             .help("Name of the project you wanna create")
@@ -70,8 +77,37 @@ impl Cli {
                     ),
             )
             .subcommand(
+                SubCommand::with_name("init")
+                    .about("Initialize a Plance project in the existing directory")
+                    .arg(
+                        Arg::with_name("name")
+                            .help("Specify the name of the project. Defaults to current working directory")
+                            .long("name")
+                            .required(false)
+                            .takes_value(true)
+                    )
+                    .arg(
+                        Arg::with_name("type")
+                            .help("Project type")
+                            .short("t")
+                            .long("type")
+                            .alias("kind")
+                            .takes_value(true)
+                            .possible_values(&[
+                                "default", "DEFAULT", "c", "C", "cpp", "CPP", "c++", "C++",
+                            ]),
+                    )
+                    .arg(
+                        Arg::with_name("createsource")
+                            .help("Create a source directory")
+                            .long("create-source")
+                            .takes_value(false)
+                    )
+            )
+            .subcommand(
                 SubCommand::with_name("delete")
                     .about("Delete an existing project")
+                    .aliases(&["remove", "erase"])
                     .arg(
                         Arg::with_name("dirname")
                             .help("Directory name of the project to be removed")
@@ -89,32 +125,37 @@ impl Cli {
 
         // Program logic
         if let Some(matches) = matches.subcommand_matches("new") {
-            cli.action = Subcommand::NEW;
-            cli.name.push_str(matches.value_of("name").unwrap());
-
-            if matches.is_present("dirname") {
-                cli.dir_name.push_str(matches.value_of("dirname").unwrap());
-            } else {
-                cli.dir_name = cli.name.clone();
-            }
-
-            if matches.is_present("type") {
-                match matches.value_of("type") {
-                    Some("c") | Some("C") => cli.project_type = ProjectType::C,
-                    Some("cpp") | Some("CPP") | Some("c++") | Some("C++") => {
-                        cli.project_type = ProjectType::CPP
-                    }
-                    Some("default") | Some("DEFAULT") | Some(_) | None => {
-                        cli.project_type = ProjectType::DEFAULT
-                    }
-                }
-            } else {
-                cli.project_type = ProjectType::DEFAULT;
-                eprintln!("WARNING! No project type supplied, defaulting...");
+            cli.action = Subcommand::New {
+                name: String::from(matches.value_of("name").unwrap()),
+                dir_name: match matches.value_of("dirname") {
+                    Some(r) => String::from(r),
+                    None => String::from(matches.value_of("name").unwrap()),
+                },
+                project_type: match matches.value_of("type") {
+                    Some("c") | Some("C") => ProjectType::C,
+                    Some("cpp") | Some("CPP") | Some("c++") | Some("C++") => ProjectType::Cpp,
+                    Some("default") | Some("DEFAULT") | Some(_) | None => ProjectType::Default,
+                },
+                git_exists: is_program_in_path("git")
+            };
+        } else if let Some(matches) = matches.subcommand_matches("init") {
+            cli.action = Subcommand::Init {
+                name: match matches.value_of("name") {
+                    Some(v) => Some(String::from(v)),
+                    None => None,
+                },
+                project_type: match matches.value_of("type") {
+                    Some("c") | Some("C") => ProjectType::C,
+                    Some("cpp") | Some("CPP") | Some("c++") | Some("C++") => ProjectType::Cpp,
+                    Some("default") | Some("DEFAULT") | Some(_) | None => ProjectType::Default,
+                },
+                create_src: matches.is_present("createsource"),
+                git_exists: is_program_in_path("git")
             }
         } else if let Some(matches) = matches.subcommand_matches("delete") {
-            cli.action = Subcommand::DELETE;
-            cli.dir_name.push_str(matches.value_of("dirname").unwrap());
+            cli.action = Subcommand::Delete {
+                dir_name: String::from(matches.value_of("dirname").unwrap()),
+            }
         }
 
         // Return the processed struct

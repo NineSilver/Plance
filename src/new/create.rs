@@ -1,12 +1,12 @@
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
+use std::process::Command;
 
 use crate::cli;
+use crate::files;
 
-pub mod files;
-
-pub fn create_project(args: &cli::Cli) {
+pub fn create_project(name: &str, dir_name: &str, project_type: cli::ProjectType, git_exists: bool) {
     // {name}
     //  ├── .plance
     //  │    └── info.json
@@ -15,8 +15,8 @@ pub fn create_project(args: &cli::Cli) {
     //  └── README.md
 
     // First, create project structure:
-    let source_dir = format!("{}/src", args.dir_name.as_str());
-    let plance_dir = format!("{}/.plance", args.dir_name.as_str());
+    let source_dir = format!("{}/src", dir_name);
+    let plance_dir = format!("{}/.plance", dir_name);
 
     match fs::create_dir_all(PathBuf::from(source_dir)) {
         Ok(()) => (),
@@ -35,18 +35,15 @@ pub fn create_project(args: &cli::Cli) {
     }
 
     // Then, write to the files
-    let mut file = match fs::File::create(PathBuf::from(format!(
-        "{}/README.md",
-        args.dir_name.as_str()
-    ))) {
+    let mut file = match fs::File::create(PathBuf::from(format!("{}/README.md", dir_name)))
+    {
         Ok(result) => result,
         Err(e) => {
             eprintln!("ERROR! Couldn't create README.md file: {}", e);
             return;
         }
     };
-    match file.write_all(format!("# {}\n> *An incredible project*", args.name.as_str()).as_bytes())
-    {
+    match file.write_all(format!("# {}\n> *An incredible project*", name).as_bytes()) {
         Ok(()) => (),
         Err(e) => {
             eprintln!("ERROR! Couldn't write to README.md file: {}", e);
@@ -54,11 +51,11 @@ pub fn create_project(args: &cli::Cli) {
         }
     }
 
-    let main = match args.project_type {
-        cli::ProjectType::C => format!("{}/src/{}", args.dir_name.as_str(), files::C_FILE),
-        cli::ProjectType::CPP => format!("{}/src/{}", args.dir_name.as_str(), files::CPP_FILE),
-        cli::ProjectType::DEFAULT => {
-            format!("{}/src/{}", args.dir_name.as_str(), files::DEFAULT_FILE)
+    let main = match project_type {
+        cli::ProjectType::C => format!("{}/src/{}", dir_name, files::C_FILE),
+        cli::ProjectType::Cpp => format!("{}/src/{}", dir_name, files::CPP_FILE),
+        cli::ProjectType::Default => {
+            format!("{}/src/{}", dir_name, files::DEFAULT_FILE)
         }
     };
     file = match fs::File::create(PathBuf::from(main)) {
@@ -69,7 +66,7 @@ pub fn create_project(args: &cli::Cli) {
         }
     };
 
-    match args.project_type {
+    match project_type {
         cli::ProjectType::C => match file.write_all(files::C_MAIN.as_bytes()) {
             Ok(()) => (),
             Err(e) => {
@@ -77,14 +74,14 @@ pub fn create_project(args: &cli::Cli) {
                 return;
             }
         },
-        cli::ProjectType::CPP => match file.write_all(files::CPP_MAIN.as_bytes()) {
+        cli::ProjectType::Cpp => match file.write_all(files::CPP_MAIN.as_bytes()) {
             Ok(()) => (),
             Err(e) => {
                 eprintln!("ERROR! Couldn't write to {} file: {}", files::CPP_FILE, e);
                 return;
             }
         },
-        cli::ProjectType::DEFAULT => match file.write_all(files::DEFAULT_MAIN.as_bytes()) {
+        cli::ProjectType::Default => match file.write_all(files::DEFAULT_MAIN.as_bytes()) {
             Ok(()) => (),
             Err(e) => {
                 eprintln!(
@@ -99,7 +96,7 @@ pub fn create_project(args: &cli::Cli) {
 
     file = match fs::File::create(PathBuf::from(format!(
         "{}/.plance/info.json",
-        args.dir_name.as_str()
+        dir_name
     ))) {
         Ok(result) => result,
         Err(e) => {
@@ -107,11 +104,26 @@ pub fn create_project(args: &cli::Cli) {
             return;
         }
     };
-    match file.write_all(format!("{{\n\t\"name\": \"{}\"\n}}", args.name.as_str()).as_bytes()) {
+    match file.write_all(
+        format!(
+            "{{\n\t\"name\": \"{}\",\n\t\"type\": \"{}\"\n}}",
+            name,
+            match project_type {
+                cli::ProjectType::C => "c",
+                cli::ProjectType::Cpp => "cpp",
+                cli::ProjectType::Default => "default",
+            }
+        )
+        .as_bytes(),
+    ) {
         Ok(()) => (),
         Err(e) => {
             eprintln!("ERROR! Couldn't write to Plance Info file: {}", e);
             return;
         }
+    }
+
+    if git_exists {
+        Command::new("git").arg("init").arg("--quiet").arg(dir_name).spawn().expect("failed to start git on the given directory");
     }
 }
