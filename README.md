@@ -9,8 +9,8 @@ Currently is in an early-stage, so I hope it has 0 bugs.
 - [X] Successfully creates directories
 - [X] Init command
 - [X] Git integration (if it is present, it'll be executed in the given directory)
-- [] Config files
-- [] Build system
+- [ ] Config files
+- [ ] Build system
 
 ## Building
 
