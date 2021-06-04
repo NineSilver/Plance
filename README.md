@@ -23,7 +23,7 @@ EZ!
 
 Plance allows you to manage projects very easily:
 
-- To create a new project: `plance new <name> [-t type]`, where *type* can be C", C++ or default
+- To create a new project: `plance new <name> [-t type]`, where *type* can be C, C++ or default
 - To initialize a new project in an existing directory: `plance init [--name name] [-t type] [--create-source]`, where *name* is the name of the project (defaults to the directory name), and *create-source* instructs Plance to also create the source directory using the given project type
 - To delete a project use `plance delete <dirname>`, where *dirname* is the location of the project.
 
