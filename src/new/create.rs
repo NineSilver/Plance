@@ -1,15 +1,22 @@
 use std::fs;
+use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::Command;
 
 use crate::cli;
 use crate::files;
+use crate::info;
 
-pub fn create_project(name: &str, dir_name: &str, project_type: cli::ProjectType, git_exists: bool) {
+pub fn create_project(
+    name: String,
+    dir_name: String,
+    project_type: cli::ProjectType,
+    git_exists: bool,
+) {
     // {name}
     //  ├── .plance
-    //  │    └── info.json
+    //  │    └── info.toml
     //  ├── src
     //  │    └── {main_file}
     //  └── README.md
@@ -26,7 +33,7 @@ pub fn create_project(name: &str, dir_name: &str, project_type: cli::ProjectType
         }
     }
 
-    match fs::create_dir(PathBuf::from(plance_dir)) {
+    match fs::create_dir(PathBuf::from(plance_dir.to_owned())) {
         Ok(()) => (),
         Err(e) => {
             eprintln!("ERROR! Couldn't create Plance directory: {}", e);
@@ -35,8 +42,7 @@ pub fn create_project(name: &str, dir_name: &str, project_type: cli::ProjectType
     }
 
     // Then, write to the files
-    let mut file = match fs::File::create(PathBuf::from(format!("{}/README.md", dir_name)))
-    {
+    let mut file = match File::create(PathBuf::from(format!("{}/README.md", dir_name))) {
         Ok(result) => result,
         Err(e) => {
             eprintln!("ERROR! Couldn't create README.md file: {}", e);
@@ -58,7 +64,7 @@ pub fn create_project(name: &str, dir_name: &str, project_type: cli::ProjectType
             format!("{}/src/{}", dir_name, files::DEFAULT_FILE)
         }
     };
-    file = match fs::File::create(PathBuf::from(main)) {
+    file = match File::create(PathBuf::from(main.to_owned())) {
         Ok(result) => result,
         Err(e) => {
             eprintln!("ERROR! Couldn't create Main file: {}", e);
@@ -94,28 +100,34 @@ pub fn create_project(name: &str, dir_name: &str, project_type: cli::ProjectType
         },
     }
 
-    file = match fs::File::create(PathBuf::from(format!(
-        "{}/.plance/info.json",
-        dir_name
-    ))) {
-        Ok(result) => result,
+    // Write the project information into .plance/info.toml
+    let info = info::Info {
+        project_info: info::ProjectInfo {
+            name: name,
+            project_type: match project_type {
+                cli::ProjectType::C => String::from("c"),
+                cli::ProjectType::Cpp => String::from("cpp"),
+                cli::ProjectType::Default => String::from("default"),
+            },
+            files: Some(vec![main]),
+        },
+        build_opts: Some(info::BuildOpts {
+            compiler: String::from("gcc"),
+
+            // FIXME: try to implement an iterator over an array of &str to convert them to String
+            flags: Some(vec!["-Wall".into(), "-O2".into()]),
+        }),
+    };
+    let toml = toml::to_string(&info).expect("Cannot serialize given structure");
+
+    file = match File::create(PathBuf::from(format!("{}/info.toml", plance_dir))) {
+        Ok(f) => f,
         Err(e) => {
             eprintln!("ERROR! Couldn't create Plance Info file: {}", e);
             return;
         }
     };
-    match file.write_all(
-        format!(
-            "{{\n\t\"name\": \"{}\",\n\t\"type\": \"{}\"\n}}",
-            name,
-            match project_type {
-                cli::ProjectType::C => "c",
-                cli::ProjectType::Cpp => "cpp",
-                cli::ProjectType::Default => "default",
-            }
-        )
-        .as_bytes(),
-    ) {
+    match file.write_all(toml.as_bytes()) {
         Ok(()) => (),
         Err(e) => {
             eprintln!("ERROR! Couldn't write to Plance Info file: {}", e);
@@ -123,7 +135,13 @@ pub fn create_project(name: &str, dir_name: &str, project_type: cli::ProjectType
         }
     }
 
+    // Execute git in the current project
     if git_exists {
-        Command::new("git").arg("init").arg("--quiet").arg(dir_name).spawn().expect("failed to start git on the given directory");
+        Command::new("git")
+            .arg("init")
+            .arg("--quiet")
+            .arg(dir_name)
+            .spawn()
+            .expect("failed to start git on the given directory");
     }
 }

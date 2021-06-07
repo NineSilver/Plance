@@ -7,13 +7,13 @@ pub enum Subcommand {
         name: String,
         dir_name: String,
         project_type: ProjectType,
-        git_exists: bool
+        git_exists: bool,
     },
     Init {
         name: Option<String>,
         project_type: ProjectType,
         create_src: bool,
-        git_exists: bool
+        git_exists: bool,
     },
     Delete {
         dir_name: String,
@@ -136,7 +136,7 @@ impl Cli {
                     Some("cpp") | Some("CPP") | Some("c++") | Some("C++") => ProjectType::Cpp,
                     Some("default") | Some("DEFAULT") | Some(_) | None => ProjectType::Default,
                 },
-                git_exists: is_program_in_path("git")
+                git_exists: is_program_in_path("git"),
             };
         } else if let Some(matches) = matches.subcommand_matches("init") {
             cli.action = Subcommand::Init {
@@ -150,7 +150,7 @@ impl Cli {
                     Some("default") | Some("DEFAULT") | Some(_) | None => ProjectType::Default,
                 },
                 create_src: matches.is_present("createsource"),
-                git_exists: is_program_in_path("git")
+                git_exists: is_program_in_path("git"),
             }
         } else if let Some(matches) = matches.subcommand_matches("delete") {
             cli.action = Subcommand::Delete {

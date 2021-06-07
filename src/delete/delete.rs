@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use plance::prompt;
 
-pub fn delete_project(args: &String) {
+pub fn delete_project(args: String) {
     // Prompt the user if he/she is sure
     if !prompt("Are you sure? You will lose your effort FOREVER! ") {
         return;
@@ -17,7 +17,7 @@ pub fn delete_project(args: &String) {
     }
 
     // Do it!
-    match fs::remove_dir_all(PathBuf::from(args.clone())) {
+    match fs::remove_dir_all(PathBuf::from(args.to_owned())) {
         Ok(()) => (),
         Err(e) => {
             eprintln!("ERROR! Couldn't remove directory {}: {}", args.as_str(), e);
